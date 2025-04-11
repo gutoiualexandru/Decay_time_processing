@@ -6,7 +6,7 @@ from scipy.signal import savgol_filter
 
 
 ##############################################################################
-# 1) DEFINE THE FIT FUNCTION: y = a * exp(-b / x) + c
+# 1) DEFINE THE FIT FUNCTION: y = a * exp(-x / b) + c
 ##############################################################################
 def fit_function(params: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
     """
@@ -133,7 +133,6 @@ def fit_vector_with_pso(y_data: np.ndarray,
     sigma_sq = (best_cost * len(x_data)) / (len(x_data) - len(best_params))
     cov=sigma_sq*cov
     variances = np.diag(cov)
-    # Negative or very large values can indicate a near-degenerate solution
     param_stds = np.sqrt(np.abs(variances))  # simple approach
 
     print("Approx. Covariance matrix:\n", cov)
@@ -150,8 +149,6 @@ def fit_vector_with_pso(y_data: np.ndarray,
         plt.xlabel("x (index)")
         plt.ylabel("y")
         plt.title("Fitting y = a * exp(-x / b) + c")
-        # plt.xlim(min(x_copy), max(x_copy))
-        # plt.ylim(min(y_copy), max(y_copy))
         plt.grid(True)
         plt.legend()
         plt.show()
@@ -160,7 +157,7 @@ def fit_vector_with_pso(y_data: np.ndarray,
 
 #Hessian
 
-def hessian(a, b, c, x_data, y_data):
+def hessian(a, b, c, x_data, y_data): #analytical calculation of the Hessian matrix for a * exp(-x/b) + c given the data
     """
     Computes the 3x3 Hessian of the MSE cost for the model:
        f(a,b,c; x) = a * exp(-x/b) + c
@@ -227,7 +224,7 @@ def invert_hessian(H):
 import pandas as pd
 
 
-def read_nth_line(n, csv_file):
+def read_nth_line(n, csv_file): #function for extracting the n-th line from a .csv file
     """
     Returns the n-th row (0-based) of a CSV file as an np.ndarray of numeric data.
     
@@ -257,7 +254,7 @@ def read_nth_line(n, csv_file):
     # Return as a numpy array
     return row_data_numeric.values
 
-def determine_bounds(y):
+def determine_bounds(y): #function for determining the bounds 
     #(y-c)/a=e^(-t/tau)=>-t/tau=ln((y-c)/a)=>tau=-t/ln((y-c)/a)=t/ln(a/(y-c))
     #min(t)=1
     #max(t)=len(y)
@@ -276,7 +273,7 @@ def determine_bounds(y):
     bounds=np.array([[a_bounds[0], b_bounds[0], c_bounds[0]],[a_bounds[1], b_bounds[1], c_bounds[1]]])
     return bounds
 
-def plot_histogram(v, bins=20, title="Histogram"):
+def plot_histogram(v, bins=20):
     """
     Plots a histogram of the vector `v`, with mean and std in the legend.
 
@@ -294,21 +291,20 @@ def plot_histogram(v, bins=20, title="Histogram"):
     counts, bins, patches = plt.hist(v, bins=bins, alpha=0.7, label=f"mean = {mean:.2f}\nstd = {std:.2f}")
     plt.xlabel("Value")
     plt.ylabel("Frequency")
-    plt.title(title)
+
     plt.legend()
     plt.grid(True)
     plt.show()
 
-def cut(v):
+def cut(v, f=0.05): #function for determining the starting point for the fit, default at 5% drop from maximum of 100 moving average
     y_smoothed = savgol_filter(v, window_length=100, polyorder=1)
     m=max(y_smoothed)
     n=min(y_smoothed)
     amp=m-n
     i_min = np.argmin(v)  # Index of the minimum value
     i_max = np.argmax(v)  # Index of the maximum value
-    # print(i_max, i_min)
     i=i_max
-    while y_smoothed[i]>m-0.05*amp:
+    while y_smoothed[i]>m-f*amp:
         i+=1
     print(i)
     return i
@@ -319,43 +315,18 @@ def cut(v):
 
 if __name__ == "__main__":
 
-    # n_points = 100
-    # x_temp = np.arange(0, n_points , 1, dtype=np.float32)  # [1..30]
-    # true_a, true_b, true_c = 15, 50, 20
-    # y_true = true_a * np.exp(-x_temp/true_b ) + true_c
-    # noise = 0 * np.random.randn(len(x_temp))
-    # y_noisy = y_true + noise
+    n_points = 500
+    x_temp = np.arange(0, n_points , 1, dtype=np.float32)  # [1..30]
+    true_a, true_b, true_c = 15, 50, 20
+    y_true = true_a * np.exp(-x_temp/true_b ) + true_c
+    noise = 1 * np.random.randn(len(x_temp))
+    y_noisy = y_true + noise
 
-    # y_preprocessed = y_noisy  # or some transform
-    # taus=[]
-    # df = pd.read_csv("20250130/ringdowns04.csv")
-    # L=len(df)
-    for i in range(10):
-        y=read_nth_line(i, "20250130/ringdowns04.csv")
-        fit_params, fit_mse, uncertainties = fit_vector_with_pso(
-            y_data=y,
-            n_particles=1000,
-            iters=100,
-            param_bounds=determine_bounds(y),
-            plot=True
-        )
-        # taus.append(fit_params[1]/200)
-    
-    # print(taus)
- #   taus=[281.58163467193276, 225.35373844372543, 268.0766135978745, 221.05420706679843, 263.2322805519707, 247.18814442612165, 229.11607729843126, 249.58081972022978, 255.81477883938038, 242.5456197366775, 217.89496058177792, 209.49785041994875, 237.3028963388242, 303.2501658656456, 213.19901639478343, 254.98222236627225, 253.9385670423435, 238.89219544223835, 256.92831340636394, 283.0608783104019, 235.44197755023703, 221.69399762270007, 266.7616341478931, 268.40126231916054, 227.21197270965956, 252.98290683211235, 314.3344065664832, 248.15691449866745, 223.77767646691285, 263.0511058727593, 220.67698314944383, 265.5493996865742, 206.86483486278132, 191.06759712866887, 229.83555130346537, 256.0266970826233, 195.09403575177683, 215.72680204906445, 216.39179706767254, 276.4640212271673, 231.28355523410812, 254.08936952100441, 228.28102415817193, 247.4567461869151, 223.55684876768385, 275.10270812612396, 251.55370560983428, 254.19561261319166, 251.04903571503166]
-
-    # taus=[5.094335091384637, 6.055358037293488, 6.171249640811386, 5.537742487419546, 5.074749096201486, 5.870429678891348, 5.117170070864504, 5.371365169926608, 5.139326987403781, 5.596600161306606, 4.9497584853583705, 6.854214601071808, 6.14762708461762, 6.001174349440113, 5.692176177704132, 4.9106078985339625, 6.31915952230622, 6.439021983157418, 6.708999541838193, 5.599966319533378, 6.54839350562559, 5.3413248793658745, 5.370831405651843, 5.795002962474768, 5.001412417831412, 5.265927366778409, 5.832347294165429, 5.479001632684434, 5.770431493876108, 5.210824098489029, 5.108285852994716, 4.885307139797964, 5.856250994103339, 6.052008062593433, 5.62597981743932, 4.632725422573158, 6.490254304505106, 5.317223822671679, 5.468360648196709, 5.338174533607271, 6.461593811197572, 5.154961250705067, 5.929710618831741, 5.388815086095811, 6.185657887064606, 6.73061059187763, 5.106855251932829, 5.544349841690479, 5.608700714126335]
-    # for i in range(len(taus)):
-    #     taus[i]=taus[i]/2
-    # plot_histogram(taus)
-    # y=read_nth_line(10, "20250130/ringdowns04.csv")
-
-    # # y=y[250:]
-    # # # y=y_noisy
-    # fit_params, fit_mse, uncertainties = fit_vector_with_pso(
-    #     y_data=y,
-    #     n_particles=1000,
-    #     iters=100,
-    #     param_bounds=determine_bounds(y),
-    #     plot=True
-    # )
+    y_preprocessed = y_noisy  
+    fit_params, fit_mse, uncertainties = fit_vector_with_pso(
+        y_data=y_preprocessed,
+        n_particles=1000,
+        iters=100,
+        param_bounds=determine_bounds(y_preprocessed),
+        plot=True
+    )
