@@ -92,11 +92,33 @@ def plot_histogram(v, bins=10, title="Histogram"):
     plt.grid(True)
     plt.show()
 
+def plot_histogram_errors(v, bins=20, title="Histogram"):
+    """
+    Plots a histogram of the vector `v`, with mean and std in the legend.
+
+    Args:
+        v (array-like): Input data vector.
+        bins (int): Number of histogram bins (default: 20).
+        title (str): Title of the plot.
+    """
+    v = np.array(v)
+    mean = np.mean(v)
+    std = np.std(v)
+
+    # Plot histogram
+    plt.figure()
+    counts, bins, patches = plt.hist(v, bins=bins, alpha=0.7, label=f"mean = {mean:.2f}\nstd = {std:.2f}")
+    plt.xlabel(r"Measured Decay Time Fit Uncertainty($\mu s$)")
+    # plt.ylabel("Frequency")
+    # plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 loaded_results = np.load("analysis_results.npy", allow_pickle=True)
 timestamp=10/2000 #in us
 # Each element is a dict
-first_result = loaded_results[18]
+first_result = loaded_results[17]
 plot_entry_result(first_result, timestamp)
 
 taus=[]
@@ -126,6 +148,44 @@ plt.axhline(mean_t - std_t, linestyle=':', color='black', label=f'Mean - STD = {
 # Label axes and add grid and legend
 plt.xlabel('Measurement')
 plt.ylabel('Time (µs)')
+# plt.title('Time Measurements Scatter Plot')
+plt.grid(True)
+plt.legend()
+
+# Display the plot
+plt.show()
+
+
+taus=[]
+for i in range(len(loaded_results)):
+    tau=loaded_results[i]['uncertainties'][1]
+    tau*=timestamp
+    taus.append(tau)
+# max_index = np.argmax(taus)
+# taus=np.delete(taus, max_index)
+plot_histogram_errors(taus)
+
+# Convert to NumPy array for convenience (if it's not already)
+taus = np.array(taus)
+
+
+# Compute mean and standard deviation
+mean_t = np.mean(taus)
+std_t = np.std(taus)
+
+# Create the x-axis (indices)
+x = np.arange(len(taus))
+
+# Create the plot
+plt.figure(figsize=(8, 5))
+plt.scatter(x, taus, color='blue')
+plt.axhline(mean_t, color='red', label=f'Mean = {mean_t:.2f}')
+plt.axhline(mean_t + std_t, linestyle=':', color='black', label=f'Mean + STD = {mean_t + std_t:.2f}')
+plt.axhline(mean_t - std_t, linestyle=':', color='black', label=f'Mean - STD = {mean_t - std_t:.2f}')
+
+# Label axes and add grid and legend
+plt.xlabel('Measurement')
+plt.ylabel('Time Fit Uncertainty (µs)')
 # plt.title('Time Measurements Scatter Plot')
 plt.grid(True)
 plt.legend()
