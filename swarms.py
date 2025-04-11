@@ -130,6 +130,8 @@ def fit_vector_with_pso(y_data: np.ndarray,
     H=hessian(best_params_t[0],best_params_t[1],best_params_t[2], x_data, y_data)
     cov = invert_hessian(H)  # approximate covariance
     # If the Hessian is singular or near-singular, this might fail or have large values
+    sigma_sq = (best_cost * len(x_data)) / (len(x_data) - len(best_params))
+    cov=sigma_sq*cov
     variances = np.diag(cov)
     # Negative or very large values can indicate a near-degenerate solution
     param_stds = np.sqrt(np.abs(variances))  # simple approach
